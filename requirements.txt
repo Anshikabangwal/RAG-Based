@@ -6,4 +6,3 @@ langchain-groq
 chromadb
 sentence-transformers
 python-dotenv
-#key=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
