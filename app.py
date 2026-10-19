@@ -128,7 +128,8 @@ for msg in chat["messages"]:
         if msg.get("sources"):
             with st.expander("📄 Sources"):
                 for src in msg["sources"]:
-                    st.caption(f"{src['source']} — Page {src['page']}")
+                    citation = f"[{src['id']}] " if src.get("id") else ""
+                    st.caption(f"{citation}{src['source']} — Page {src['page']}")
 
 # Chat input box (always pinned at the bottom)
 if question := st.chat_input("Ask a question about your documents..."):
@@ -141,12 +142,16 @@ if question := st.chat_input("Ask a question about your documents..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            result = answer_question(question, chat_id=st.session_state.current_chat)
+            result = answer_question(
+                question,
+                chat_id=st.session_state.current_chat,
+                chat_history=chat["messages"][:-1],
+            )
         st.markdown(result["answer"])
         if result["sources"]:
             with st.expander("📄 Sources"):
                 for src in result["sources"]:
-                    st.caption(f"{src['source']} — Page {src['page']}")
+                    st.caption(f"[{src['id']}] {src['source']} — Page {src['page']}")
 
     chat["messages"].append({
         "role": "assistant",

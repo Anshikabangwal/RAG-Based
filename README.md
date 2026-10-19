@@ -7,7 +7,7 @@ A RAG (Retrieval-Augmented Generation) based AI study assistant with a chatbot-s
 ## 🔄 What it does
 
 1. **Upload documents** — syllabus, notes, textbooks, PYQs (sidebar)
-2. **Chat with your material** — ask questions in a chatbot-style interface, get answers grounded in your uploaded content (not generic AI knowledge), with source page references
+2. **Chat with your material** — ask questions in a chatbot-style interface, get answers grounded in your uploaded content, with inline citations linked to source page references; recent conversation turns help resolve follow-up questions
 3. **PYQ analysis** *(in progress)* — will detect frequently repeated questions/topics across years and tell you what to prioritize
 
 ---
