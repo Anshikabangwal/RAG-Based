@@ -13,28 +13,33 @@ def get_collection():
         _collection = _client.get_or_create_collection(name="study_docs")
     return _collection
 
-def add_chunks(chunks):
+def add_chunks(chunks, chat_id):
     """
-    Embeds and stores chunks in ChromaDB.
+    Embeds and stores chunks in ChromaDB, tagged with the chat they belong to.
     chunks: [{"text": ..., "page": ..., "source": ...}, ...]
     """
     collection = get_collection()
     texts = [c["text"] for c in chunks]
     embeddings = embed_texts(texts)
 
-    ids = [f"{c['source']}_p{c['page']}_{i}" for i, c in enumerate(chunks)]
-    metadatas = [{"page": c["page"], "source": c["source"]} for c in chunks]
+    # chat_id in the id keeps the same PDF in two chats from colliding
+    ids = [f"{chat_id}_{c['source']}_p{c['page']}_{i}" for i, c in enumerate(chunks)]
+    metadatas = [
+        {"page": c["page"], "source": c["source"], "chat_id": chat_id}
+        for c in chunks
+    ]
 
-    collection.add(
+    # upsert: re-processing the same file replaces chunks instead of erroring
+    collection.upsert(
         ids=ids,
         embeddings=embeddings,
         documents=texts,
         metadatas=metadatas
     )
 
-def query_chunks(question, n_results=4):
+def query_chunks(question, chat_id, n_results=4):
     """
-    Finds the most relevant chunks for a question.
+    Finds the most relevant chunks for a question, only from this chat's PDFs.
     Returns list of {"text": ..., "page": ..., "source": ...}
     """
     collection = get_collection()
@@ -42,7 +47,8 @@ def query_chunks(question, n_results=4):
 
     results = collection.query(
         query_embeddings=[question_embedding],
-        n_results=n_results
+        n_results=n_results,
+        where={"chat_id": chat_id}
     )
 
     matches = []
