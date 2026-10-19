@@ -2,9 +2,17 @@ import streamlit as st
 
 CSS = """
 <style>
-/* ---------- Page background: soft tint instead of stark white ---------- */
+/* ---------- Calm, spacious study workspace ---------- */
 .stApp {
-    background: linear-gradient(180deg, #F5F6FD 0%, #EEF1FB 100%);
+    background:
+        radial-gradient(ellipse at 80% 0%, rgba(124, 58, 237, .08), transparent 32rem),
+        linear-gradient(180deg, #F7F8FC 0%, #F0F2F9 100%);
+    color: #20243A;
+}
+.block-container {
+    max-width: 1180px;
+    padding-top: 2.2rem;
+    padding-bottom: 7rem;
 }
 header[data-testid="stHeader"] {
     background: transparent;
@@ -12,23 +20,26 @@ header[data-testid="stHeader"] {
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #E9ECFA 0%, #E1E5F7 100%);
-    border-right: 1px solid #D6DBF2;
+    background: linear-gradient(180deg, #F0F1FB 0%, #E9EBF7 100%);
+    border-right: 1px solid #DFE2F0;
 }
 section[data-testid="stSidebar"] h1,
 section[data-testid="stSidebar"] h2,
 section[data-testid="stSidebar"] h3 {
-    color: #2B2F6B;
+    color: #27294F;
+}
+section[data-testid="stSidebar"] [data-testid="stFileUploader"] section {
+    background: rgba(255, 255, 255, .78);
 }
 
 /* ---------- Hero (title + subtitle) ---------- */
-.hero { padding: 1.2rem 0 0.4rem 0; }
+.hero { padding: .25rem 0 1rem 0; }
 .hero-title {
-    font-size: 2.6rem;
+    font-size: clamp(2.2rem, 5vw, 3.1rem);
     font-weight: 800;
-    letter-spacing: -0.5px;
+    letter-spacing: -1.2px;
     margin: 0;
-    color: #1F2340;
+    color: #20243A;
 }
 /* gradient only on the text, so the emoji keeps its colour */
 .hero-title .grad {
@@ -38,9 +49,27 @@ section[data-testid="stSidebar"] h3 {
     -webkit-text-fill-color: transparent;
 }
 .hero-sub {
-    color: #6B7094;
-    margin: 0.35rem 0 0 0;
+    color: #737895;
+    margin: 0.55rem 0 0 0;
     font-size: 1rem;
+}
+
+/* ---------- Status cards ---------- */
+[data-testid="stMetric"] {
+    background: rgba(255, 255, 255, .82);
+    border: 1px solid #E5E7F1;
+    border-radius: 14px;
+    padding: .85rem 1rem;
+    box-shadow: 0 4px 16px rgba(35, 40, 84, .04);
+}
+[data-testid="stMetricLabel"] {
+    color: #777C98;
+    font-size: .82rem;
+}
+[data-testid="stMetricValue"] {
+    color: #34316F;
+    font-size: 1.5rem;
+    font-weight: 750;
 }
 
 /* ---------- Empty-state hint cards ---------- */
@@ -48,14 +77,14 @@ section[data-testid="stSidebar"] h3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 12px;
-    margin-top: 1.4rem;
+    margin-top: 1.15rem;
 }
 .hint-card {
-    background: #FFFFFF;
-    border: 1px solid #E3E7F7;
-    border-radius: 14px;
-    padding: 14px 16px;
-    box-shadow: 0 2px 10px rgba(79, 70, 229, .06);
+    background: rgba(255, 255, 255, .88);
+    border: 1px solid #E4E6F1;
+    border-radius: 16px;
+    padding: 17px 18px;
+    box-shadow: 0 5px 18px rgba(45, 49, 94, .05);
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .hint-card:hover {
@@ -64,8 +93,8 @@ section[data-testid="stSidebar"] h3 {
     box-shadow: 0 8px 20px rgba(79, 70, 229, .12);
 }
 .hint-card .ico { font-size: 1.3rem; }
-.hint-card .ttl { font-weight: 700; color: #2B2F6B; margin: 6px 0 2px 0; font-size: .95rem; }
-.hint-card .txt { color: #6B7094; font-size: .85rem; line-height: 1.35; }
+.hint-card .ttl { font-weight: 700; color: #34316F; margin: 6px 0 2px 0; font-size: .95rem; }
+.hint-card .txt { color: #737895; font-size: .85rem; line-height: 1.45; }
 @media (max-width: 700px) {
     .hint-grid { grid-template-columns: 1fr; }
 }
@@ -73,7 +102,7 @@ section[data-testid="stSidebar"] h3 {
 /* ---------- File uploader card ---------- */
 [data-testid="stFileUploader"] section {
     background: #FFFFFF;
-    border: 1.5px dashed #A5B0F0;
+    border: 1.5px dashed #A9ADE0;
     border-radius: 14px;
     transition: border-color .2s, box-shadow .2s;
 }
@@ -85,10 +114,10 @@ section[data-testid="stSidebar"] h3 {
 /* ---------- Buttons ---------- */
 .stButton > button,
 [data-testid="stFileUploader"] button {
-    border-radius: 10px;
-    border: 1px solid #C7CDF2;
+    border-radius: 11px;
+    border: 1px solid #D8D9EC;
     background: #FFFFFF;
-    color: #3B3F8C;
+    color: #403D83;
     font-weight: 600;
     transition: all .2s ease;
 }
@@ -103,41 +132,51 @@ section[data-testid="stSidebar"] h3 {
 
 /* ---------- Chat messages ---------- */
 [data-testid="stChatMessage"] {
-    background: #FFFFFF;
-    border: 1px solid #E3E7F7;
-    border-radius: 16px;
-    padding: 14px 18px;
-    margin-bottom: 12px;
-    box-shadow: 0 2px 10px rgba(79, 70, 229, .06);
+    background: rgba(255, 255, 255, .94);
+    border: 1px solid #E6E7F0;
+    border-radius: 18px;
+    padding: 16px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 5px 18px rgba(41, 45, 87, .045);
 }
 [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) {
-    background: #EEF0FF;
-    border-color: #D5DAFB;
+    background: #F0F0FF;
+    border-color: #DCDDF5;
+}
+[data-testid="stChatMessage"] p {
+    line-height: 1.7;
 }
 
 /* ---------- Chat input ---------- */
 [data-testid="stChatInput"] {
     background: #FFFFFF;
-    border: 1.5px solid #D5DAFB;
-    border-radius: 16px;
-    box-shadow: 0 4px 18px rgba(79, 70, 229, .10);
+    border: 1.5px solid #DCDDF0;
+    border-radius: 17px;
+    box-shadow: 0 5px 22px rgba(56, 52, 126, .09);
 }
 [data-testid="stChatInput"]:focus-within {
-    border-color: #6366F1;
-    box-shadow: 0 4px 22px rgba(99, 102, 241, .22);
+    border-color: #7773D6;
+    box-shadow: 0 5px 24px rgba(99, 92, 194, .18);
+}
+
+/* ---------- Source and settings panels ---------- */
+[data-testid="stExpander"] {
+    background: rgba(255, 255, 255, .68);
+    border: 1px solid #E5E6F0;
+    border-radius: 13px;
 }
 
 /* ---------- Small touches ---------- */
-hr { border-color: #D6DBF2; }
+hr { border-color: #E0E2ED; }
 ::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-thumb { background: #C3C9EE; border-radius: 8px; }
+::-webkit-scrollbar-thumb { background: #C9CBE0; border-radius: 8px; }
 </style>
 """
 
 HERO = """
 <div class="hero">
   <h1 class="hero-title">📚 <span class="grad">Study Assistant</span></h1>
-  <p class="hero-sub">Ask me anything about your uploaded study material.</p>
+  <p class="hero-sub">Grounded answers from your notes, with optional web research for missing details.</p>
 </div>
 """
 

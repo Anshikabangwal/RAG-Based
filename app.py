@@ -7,10 +7,11 @@ from core.pdf_processor import extract_text_from_pdf
 from core.chunker import chunk_pages
 from core.vector_store import add_chunks
 from core.rag_chain import answer_question
+from core.web_search import WebSearchError
 from config import UPLOAD_DIR
 from style import apply_style, render_hero, render_hints
 
-st.set_page_config(page_title="Study Assistant", page_icon="📚", layout="centered")
+st.set_page_config(page_title="Study Assistant", page_icon="📚", layout="wide")
 apply_style()
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -44,6 +45,22 @@ def new_chat():
     }
     st.session_state.current_chat = chat_id
     save_chats()
+
+
+def render_sources(sources):
+    if not sources:
+        return
+
+    with st.expander("📚 References", expanded=False):
+        for source in sources:
+            if source.get("type") == "web":
+                st.caption(f"{source['id']} · Web result")
+                st.link_button(source["title"][:100], source["url"])
+            else:
+                citation = f"{source['id']} · " if source.get("id") else ""
+                st.caption(
+                    f"{citation}{source['source']} — Page {source['page']}"
+                )
 
 
 # --- Session state setup ---
@@ -92,7 +109,22 @@ with st.sidebar:
         st.success(f"{len(uploaded_files)} document(s) ready!")
 
     if chat["docs"]:
-        st.info("✅ Documents loaded: " + ", ".join(chat["docs"]))
+        with st.expander(f"📄 Your documents ({len(chat['docs'])})", expanded=True):
+            for document in chat["docs"]:
+                st.caption(f"✓ {document}")
+    else:
+        st.info("Upload and process PDFs to ask questions about your material.")
+
+    web_search_enabled = st.toggle(
+        "Use web for missing information",
+        value=False,
+        key=f"web_lookup_{st.session_state.current_chat}",
+        help="Search DuckDuckGo only if your uploaded material cannot answer the question.",
+    )
+    st.caption(
+        "When enabled, only a focused query derived from your question is sent to "
+        "DuckDuckGo, not your PDF text. Web sources are labeled separately."
+    )
 
     if st.button("Clear Chat", use_container_width=True):
         chat["messages"] = []
@@ -101,7 +133,7 @@ with st.sidebar:
         st.rerun()
 
     st.divider()
-    st.markdown("### History")
+    st.markdown("### Recent chats")
     for cid, c in sorted(
         st.session_state.chats.items(), key=lambda x: x[1]["created"], reverse=True
     ):
@@ -118,6 +150,14 @@ with st.sidebar:
 # --- Main chat area ---
 render_hero()
 
+status_columns = st.columns(3)
+status_columns[0].metric("Study documents", len(chat["docs"]))
+status_columns[1].metric("Messages", len(chat["messages"]))
+status_columns[2].metric(
+    "Web fallback", "On" if web_search_enabled else "Off"
+)
+st.divider()
+
 if not chat["messages"]:
     render_hints()
 
@@ -125,14 +165,10 @@ if not chat["messages"]:
 for msg in chat["messages"]:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        if msg.get("sources"):
-            with st.expander("📄 Sources"):
-                for src in msg["sources"]:
-                    citation = f"[{src['id']}] " if src.get("id") else ""
-                    st.caption(f"{citation}{src['source']} — Page {src['page']}")
+        render_sources(msg.get("sources", []))
 
 # Chat input box (always pinned at the bottom)
-if question := st.chat_input("Ask a question about your documents..."):
+if question := st.chat_input("Ask about your notes or a related topic..."):
     chat["messages"].append({"role": "user", "content": question})
     if chat["title"] == "New chat":
         chat["title"] = question[:40]
@@ -142,16 +178,25 @@ if question := st.chat_input("Ask a question about your documents..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            result = answer_question(
-                question,
-                chat_id=st.session_state.current_chat,
-                chat_history=chat["messages"][:-1],
-            )
+            try:
+                result = answer_question(
+                    question,
+                    chat_id=st.session_state.current_chat,
+                    chat_history=chat["messages"][:-1],
+                    use_web_search=web_search_enabled,
+                )
+            except WebSearchError as error:
+                st.warning(f"Web lookup could not be completed: {error}")
+                result = answer_question(
+                    question,
+                    chat_id=st.session_state.current_chat,
+                    chat_history=chat["messages"][:-1],
+                )
+                result["answer"] += (
+                    f"\n\n**Web lookup unavailable:** {error}"
+                )
         st.markdown(result["answer"])
-        if result["sources"]:
-            with st.expander("📄 Sources"):
-                for src in result["sources"]:
-                    st.caption(f"[{src['id']}] {src['source']} — Page {src['page']}")
+        render_sources(result["sources"])
 
     chat["messages"].append({
         "role": "assistant",

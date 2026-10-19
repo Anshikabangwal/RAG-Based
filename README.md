@@ -8,7 +8,8 @@ A RAG (Retrieval-Augmented Generation) based AI study assistant with a chatbot-s
 
 1. **Upload documents** — syllabus, notes, textbooks, PYQs (sidebar)
 2. **Chat with your material** — ask questions in a chatbot-style interface, get answers grounded in your uploaded content, with inline citations linked to source page references; recent conversation turns help resolve follow-up questions
-3. **PYQ analysis** *(in progress)* — will detect frequently repeated questions/topics across years and tell you what to prioritize
+3. **Optional web fallback** — enable “Use web for missing information” in the sidebar to search DuckDuckGo when your uploaded material cannot fully answer a question. Web references are labeled separately from PDF page citations; web search is off by default and needs no API key.
+4. **PYQ analysis** *(in progress)* — will detect frequently repeated questions/topics across years and tell you what to prioritize
 
 ---
 
@@ -24,6 +25,7 @@ A RAG (Retrieval-Augmented Generation) based AI study assistant with a chatbot-s
 | Embeddings | sentence-transformers (`all-MiniLM-L6-v2`) |
 | Vector database | ChromaDB |
 | LLM | Groq API (`openai/gpt-oss-20b`) |
+| Optional web fallback | DuckDuckGo via `ddgs` |
 
 ---
 
@@ -73,7 +75,7 @@ Afterward, confirm everything installed correctly:
 ```bash
 pip list
 ```
-You should see `streamlit`, `langchain`, `langchain-community`, `langchain-groq`, `langchain-text-splitters`, `chromadb`, `sentence-transformers`, `python-dotenv`, `pymupdf` in the list.
+You should see `streamlit`, `langchain`, `langchain-community`, `langchain-groq`, `langchain-text-splitters`, `chromadb`, `sentence-transformers`, `python-dotenv`, `pymupdf`, `ddgs` in the list.
 
 ### 4. Set up your Groq API key
 
@@ -127,6 +129,7 @@ RAG-Based/
 │   ├── embeddings.py          # Generate embeddings (sentence-transformers)
 │   ├── vector_store.py        # ChromaDB setup, add/query
 │   ├── rag_chain.py           # Retrieval + LLM → final answer with sources
+│   ├── web_search.py          # Optional DuckDuckGo lookup for missing information
 │   │
 │   └── pyq_analysis/          # PYQ analysis — the project's key differentiator (in progress)
 │       ├── question_extractor.py   # Pull questions out of PYQ PDFs
@@ -155,6 +158,7 @@ RAG-Based/
 | Pylance shows red underlines on imports in VS Code | `Ctrl+Shift+P` → "Python: Select Interpreter" → choose the one inside `venv\Scripts\python.exe` |
 | Groq model errors (`model_not_found`) | Groq occasionally deprecates model names — check [console.groq.com/docs/models](https://console.groq.com/docs/models) for current active models and update `LLM_MODEL` in `config.py` |
 | `.env` not being read | Confirm the file is named exactly `.env` (not `.env.txt`) and is in the project root, not inside a subfolder |
+| Web fallback returns an error or no references | Check your internet connection. Web lookup is optional and can be disabled in the sidebar; answers will then use only the uploaded PDFs |
 | Blank white page in browser after `streamlit run` | Usually means the embedding model is still downloading in the background (first run only) — wait a minute, then refresh. If it persists, check the terminal for a real traceback and check the browser DevTools Console (F12) for errors |
 | Terminal floods with `ModuleNotFoundError: No module named 'torchvision'` warnings | Harmless — this is Streamlit's file watcher scanning unrelated vision-model submodules inside `transformers`. We don't use `torchvision` in this project. Can be silenced (see `app.py` — `warnings.filterwarnings` / logging suppression near the top) |
 | App unexpectedly prints "Stopping..." right after starting | Usually caused by another terminal/process already using port 8501, or an accidental `Ctrl+C`. Run `netstat -ano \| findstr :8501` to check, and use a single, untouched terminal tab per run |
