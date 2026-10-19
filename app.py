@@ -3,6 +3,7 @@ import os
 import json
 import uuid
 from datetime import datetime
+from urllib.parse import urlparse
 from core.pdf_processor import extract_text_from_pdf
 from core.chunker import chunk_pages
 from core.vector_store import add_chunks
@@ -47,20 +48,52 @@ def new_chat():
     save_chats()
 
 
-def render_sources(sources):
+def render_sources(sources, key_suffix=""):
     if not sources:
         return
 
     with st.expander("📚 References", expanded=False):
-        for source in sources:
+        for index, source in enumerate(sources):
             if source.get("type") == "web":
-                st.caption(f"{source['id']} · Web result")
-                st.link_button(source["title"][:100], source["url"])
+                source_id = source.get("id") or f"W{index + 1}"
+                raw_url = source.get("url")
+                url = raw_url.strip() if isinstance(raw_url, str) else ""
+                raw_title = source.get("title")
+                title = raw_title.strip() if isinstance(raw_title, str) else ""
+                label = title or urlparse(url).netloc or "Open web result"
+                st.caption(f"{source_id} · Web result")
+                if urlparse(url).scheme in {"http", "https"} and urlparse(url).netloc:
+                    st.link_button(
+                        label[:100],
+                        url,
+                        key=f"web_source_{key_suffix}_{source_id}_{index}",
+                    )
+                    st.caption(url)
+                else:
+                    st.caption(label)
             else:
                 citation = f"{source['id']} · " if source.get("id") else ""
                 st.caption(
                     f"{citation}{source['source']} — Page {source['page']}"
                 )
+
+
+def generate_answer(question, chat_id, chat_history, use_web_search):
+    try:
+        return answer_question(
+            question,
+            chat_id=chat_id,
+            chat_history=chat_history,
+            use_web_search=use_web_search,
+        ), None
+    except WebSearchError as error:
+        result = answer_question(
+            question,
+            chat_id=chat_id,
+            chat_history=chat_history,
+        )
+        result["answer"] += f"\n\n**Web lookup unavailable:** {error}"
+        return result, str(error)
 
 
 # --- Session state setup ---
@@ -137,6 +170,8 @@ with st.sidebar:
     for cid, c in sorted(
         st.session_state.chats.items(), key=lambda x: x[1]["created"], reverse=True
     ):
+        if c.get("title") == "New chat" and not c.get("messages"):
+            continue
         is_current = cid == st.session_state.current_chat
         if st.button(
             c["title"][:30],
@@ -162,10 +197,38 @@ if not chat["messages"]:
     render_hints()
 
 # Display past messages
-for msg in chat["messages"]:
+for message_index, msg in enumerate(chat["messages"]):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
-        render_sources(msg.get("sources", []))
+        render_sources(msg.get("sources", []), key_suffix=f"history_{message_index}")
+        if msg["role"] == "assistant":
+            question_index = next(
+                (
+                    prior_index
+                    for prior_index in range(message_index - 1, -1, -1)
+                    if chat["messages"][prior_index]["role"] == "user"
+                ),
+                None,
+            )
+            if question_index is not None and st.button(
+                "↻ Regenerate answer",
+                key=f"regenerate_{st.session_state.current_chat}_{message_index}",
+                help="Generate a new answer to the same question.",
+            ):
+                original_question = chat["messages"][question_index]["content"]
+                with st.spinner("Generating a new answer..."):
+                    regenerated, web_error = generate_answer(
+                        original_question,
+                        chat_id=st.session_state.current_chat,
+                        chat_history=chat["messages"][:question_index],
+                        use_web_search=web_search_enabled,
+                    )
+                if web_error:
+                    st.warning(f"Web lookup could not be completed: {web_error}")
+                chat["messages"][message_index]["content"] = regenerated["answer"]
+                chat["messages"][message_index]["sources"] = regenerated["sources"]
+                save_chats()
+                st.rerun()
 
 # Chat input box (always pinned at the bottom)
 if question := st.chat_input("Ask about your notes or a related topic..."):
@@ -178,25 +241,16 @@ if question := st.chat_input("Ask about your notes or a related topic..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
-            try:
-                result = answer_question(
-                    question,
-                    chat_id=st.session_state.current_chat,
-                    chat_history=chat["messages"][:-1],
-                    use_web_search=web_search_enabled,
-                )
-            except WebSearchError as error:
-                st.warning(f"Web lookup could not be completed: {error}")
-                result = answer_question(
-                    question,
-                    chat_id=st.session_state.current_chat,
-                    chat_history=chat["messages"][:-1],
-                )
-                result["answer"] += (
-                    f"\n\n**Web lookup unavailable:** {error}"
-                )
+            result, web_error = generate_answer(
+                question,
+                chat_id=st.session_state.current_chat,
+                chat_history=chat["messages"][:-1],
+                use_web_search=web_search_enabled,
+            )
+        if web_error:
+            st.warning(f"Web lookup could not be completed: {web_error}")
         st.markdown(result["answer"])
-        render_sources(result["sources"])
+        render_sources(result["sources"], key_suffix="latest")
 
     chat["messages"].append({
         "role": "assistant",

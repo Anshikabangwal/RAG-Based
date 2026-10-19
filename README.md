@@ -8,8 +8,9 @@ A RAG (Retrieval-Augmented Generation) based AI study assistant with a chatbot-s
 
 1. **Upload documents** — syllabus, notes, textbooks, PYQs (sidebar)
 2. **Chat with your material** — ask questions in a chatbot-style interface, get answers grounded in your uploaded content, with inline citations linked to source page references; recent conversation turns help resolve follow-up questions
-3. **Optional web fallback** — enable “Use web for missing information” in the sidebar to search DuckDuckGo when your uploaded material cannot fully answer a question. Web references are labeled separately from PDF page citations; web search is off by default and needs no API key.
-4. **PYQ analysis** *(in progress)* — will detect frequently repeated questions/topics across years and tell you what to prioritize
+3. **Optional web fallback** — enable “Use web for missing information” in the sidebar to search DuckDuckGo when your uploaded material cannot fully answer a question. For gap-research requests, the assistant searches each candidate topic separately and only reports gaps supported by exact quotes from retrieved PDF excerpts. It describes those as excerpt-level gaps, not proof that the whole syllabus omits a topic. Web references are labeled separately from PDF page citations; web search is off by default and needs no API key.
+4. **Regenerate answers** — use the button below a previous assistant answer to request a fresh response to that question; its references are refreshed as well.
+5. **PYQ analysis** *(in progress)* — will detect frequently repeated questions/topics across years and tell you what to prioritize
 
 ---
 
